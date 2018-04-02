@@ -1,16 +1,9 @@
 import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.ftp.*;
+import org.apache.commons.net.util.TrustManagerUtils;
 
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.TrustManager;
+
 import java.io.*;
-import java.net.SocketException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 
 public class FTPSTest {
     private static String localFilename = "C:\\Users\\Erik Hakamada\\Desktop\\Nova\\testando.txt";
@@ -23,7 +16,8 @@ public class FTPSTest {
         try {
 //            System.setProperty("javax.net.debug", "ssl");
 
-            FTPSClient ftpClient = new FTPSClient();
+            SSLSessionReuseFTPSClient ftpClient = new SSLSessionReuseFTPSClient();
+            System.setProperty("jdk.tls.useExtendedMasterSecret", "false");
             // Connect to host
             ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out), true));
             ftpClient.connect(server, port);
@@ -38,10 +32,15 @@ public class FTPSTest {
                     ftpClient.execPROT("P");
                     // Enter local passive mode
                     ftpClient.type(FTP.BINARY_FILE_TYPE);
+                    ftpClient.enterLocalPassiveMode();
 
-                    ftpClient.printWorkingDirectory();
-
-
+                    InputStream in = ftpClient.retrieveFileStream("/Erik/Teste.txt");
+                    InputStreamReader isr = new InputStreamReader(in);
+                    BufferedReader br = new BufferedReader(isr);
+                    String linha;
+                    while((linha = br.readLine()) != null ){
+                        System.out.println("linha = " + linha);
+                    }
                     ftpClient.logout();
                 } else {
                     System.out.println("FTP login failed");
@@ -57,6 +56,18 @@ public class FTPSTest {
             ioe.printStackTrace();
         }
     }
+
+    private static void printFiles(FTPFile[] ftpFiles) {
+        for (FTPFile file : ftpFiles){
+            String details = file.getName();
+            if (file.isDirectory()){
+                details = "["+details+"]";
+            }
+            details += "\t\t"+ file.getSize();
+            System.out.println(details);
+        }
+    }
+
     public static void downloadDirectory(FTPSClient ftpClient, String parentDir,
                                          String currentDir, String saveDir) throws IOException {
         String dirToList = parentDir;
